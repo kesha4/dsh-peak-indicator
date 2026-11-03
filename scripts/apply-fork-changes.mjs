@@ -219,6 +219,132 @@ insertBefore(
   "function installPluginText(locale) {",
 )
 
+// --- automatic cost currency: wallet currency store -----------------------
+insertAfter(
+  "wallet currency store",
+  `    // END SHARED BALANCE`,
+  `
+
+    // Fork: the balance store publishes the auto-picked wallet currency so the
+    // header badge and the per-turn chip choose the same peakCost projection.
+    function createWalletCurrencyStore(balance) {
+      let currency;
+      const listeners = new Set();
+      const read = () => {
+        const snapshot = balance.getSnapshot();
+        return snapshot && snapshot.status === "ready" ? snapshot.currency : undefined;
+      };
+      const publish = () => {
+        const next = read();
+        if (next === currency) return;
+        currency = next;
+        for (const listener of listeners) listener();
+      };
+      const unsubscribe = balance.subscribe(publish);
+      publish();
+      return {
+        getSnapshot: () => currency,
+        subscribe: (listener) => { listeners.add(listener); return () => listeners.delete(listener); },
+        dispose: () => { unsubscribe(); listeners.clear(); }
+      };
+    }
+
+    // Used when a component renders without the wallet store (tests, old host).
+    const EMPTY_CURRENCY_STORE = { getSnapshot: () => undefined, subscribe: () => () => {} };`,
+  "function createWalletCurrencyStore(balance)",
+)
+
+replace(
+  "badge takes the wallet currency store",
+  `    function PeakBadge({ t, directory, load, useProjection, balance }) {`,
+  `    function PeakBadge({ t, directory, load, useProjection, balance, currency: walletCurrencyStore }) {`,
+)
+
+replace(
+  "badge projection follows the wallet currency",
+  `      const projection = useProjection("peakCost");
+      // Selection is durable session data.`,
+  `      const primaryProjection = useProjection("peakCost");
+      const alternateProjection = useProjection("peakCostAlt");
+      const walletCurrency = walletCurrencyStore && typeof walletCurrencyStore.subscribe === "function"
+        ? walletCurrencyStore : EMPTY_CURRENCY_STORE;
+      // Fork: follow the wallet currency picked from the funded balance; the
+      // configured projection stays the fallback until the balance is known.
+      const wallet = import_react.default.useSyncExternalStore(walletCurrency.subscribe, walletCurrency.getSnapshot, walletCurrency.getSnapshot);
+      const projection = wallet && alternateProjection?.currency === wallet && primaryProjection?.currency !== wallet
+        ? alternateProjection : primaryProjection;
+      // Selection is durable session data.`,
+)
+
+replace(
+  "turn chip takes the wallet currency store",
+  `    function TurnCost({ messageId, useProjection, t }) {`,
+  `    function TurnCost({ messageId, useProjection, t, currency: walletCurrencyStore }) {`,
+)
+
+replace(
+  "turn chip projection follows the wallet currency",
+  `      const projection = useProjection("peakCost");
+      if (typeof projection !== "object" || projection === null) return null;`,
+  `      const primaryProjection = useProjection("peakCost");
+      const alternateProjection = useProjection("peakCostAlt");
+      const walletCurrency = walletCurrencyStore && typeof walletCurrencyStore.subscribe === "function"
+        ? walletCurrencyStore : EMPTY_CURRENCY_STORE;
+      const wallet = import_react.default.useSyncExternalStore(walletCurrency.subscribe, walletCurrency.getSnapshot, walletCurrency.getSnapshot);
+      const projection = wallet && alternateProjection?.currency === wallet && primaryProjection?.currency !== wallet
+        ? alternateProjection : primaryProjection;
+      if (typeof projection !== "object" || projection === null) return null;`,
+)
+
+replaceOnce(
+  "apply creates the wallet currency store",
+  `      const balance = createBalanceStore();
+      ctx.effect(() => () => balance.dispose(), "peak-indicator: balance store");`,
+  `      const balance = createBalanceStore();
+      ctx.effect(() => () => balance.dispose(), "peak-indicator: balance store");
+      const walletCurrencyStore = createWalletCurrencyStore(balance);
+      ctx.effect(() => () => walletCurrencyStore.dispose(), "peak-indicator: wallet currency");`,
+  "const walletCurrencyStore = createWalletCurrencyStore(balance);",
+)
+
+replace(
+  "badge slot passes the wallet currency store",
+  `            return {
+              balance,
+              directory: directory.store,
+              load: () => directory.load().catch(() => {})
+            };
+          } catch {
+            return { directory: null, balance };
+          }`,
+  `            return {
+              balance,
+              currency: walletCurrencyStore,
+              directory: directory.store,
+              load: () => directory.load().catch(() => {})
+            };
+          } catch {
+            return { directory: null, balance, currency: walletCurrencyStore };
+          }`,
+)
+
+replace(
+  "turn chip slot passes the wallet currency store",
+  `      ctx.slots.inject("conversation.chat.assistant-actions", () => ctx.slots.register({
+        name: "conversation.chat.assistant-actions",
+        id: "peak-indicator",
+        order: 100,
+        locale: NS
+      }, TurnCost));`,
+  `      ctx.slots.inject("conversation.chat.assistant-actions", () => ctx.slots.register({
+        name: "conversation.chat.assistant-actions",
+        id: "peak-indicator",
+        order: 100,
+        locale: NS,
+        inject: () => ({ currency: walletCurrencyStore })
+      }, TurnCost));`,
+)
+
 try {
   new Function(source)
 } catch (error) {
