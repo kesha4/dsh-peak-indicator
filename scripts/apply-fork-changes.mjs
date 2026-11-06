@@ -125,7 +125,7 @@ insertAfter(
       "balance.retry": "Баланс аккаунта DSH; нажмите для повтора",
       "balance.login": "Войдите в аккаунт DeepSeek в настройках DSH",
       "balance.wait": "Чтение баланса аккаунта DSH",
-      "balance.offline": "Сервис баланса DSH недоступен"
+      "balance.offline": "Сервис баланса DSH недоступен; нажмите, чтобы переподключиться"
     };`,
   "var ru = {",
 )
@@ -343,6 +343,46 @@ replace(
         locale: NS,
         inject: () => ({ currency: walletCurrencyStore })
       }, TurnCost));`,
+)
+
+// --- balance badge reconnect (Host restarts / Client recompose kill the stream) ---
+replace(
+  "zh balance offline hint",
+  `"balance.offline": "DSH 账户余额接口暂不可用"`,
+  `"balance.offline": "DSH 账户余额接口暂不可用，点击重连"`,
+)
+replace(
+  "en balance offline hint",
+  `"balance.offline": "DSH account balance service is unavailable"`,
+  `"balance.offline": "DSH account balance service is unavailable; click to reconnect"`,
+)
+replace(
+  "ru balance offline hint",
+  `"balance.offline": "Сервис баланса DSH недоступен"`,
+  `"balance.offline": "Сервис баланса DSH недоступен; нажмите, чтобы переподключиться"`,
+)
+replace(
+  "fallback store reconnects",
+  `      subscribe: () => () => {},
+      refresh: () => Promise.resolve()
+    };`,
+  `      subscribe: () => () => {},
+      refresh: () => Promise.resolve(),
+      reconnect: () => Promise.resolve()
+    };`,
+)
+replace(
+  "badge keeps unavailable clickable",
+  `const disabled = ["loading", "signed-out", "unavailable"].includes(snapshot.status);`,
+  `const disabled = ["loading", "signed-out"].includes(snapshot.status);`,
+)
+replace(
+  "badge click reconnects",
+  `        onClick: () => { void balance.refresh(); }, disabled,`,
+  `        onClick: () => {
+          if (snapshot.status === "unavailable" && typeof balance.reconnect === "function") { void balance.reconnect(); return; }
+          void balance.refresh();
+        }, disabled,`,
 )
 
 try {
