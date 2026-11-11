@@ -2,6 +2,16 @@
 
 Форк [future007s/dsh-peak-indicator](https://github.com/future007s/dsh-peak-indicator) с локализацией и долларовыми суммами.
 
+## Версия 0.1.36: совместимость с DSH 0.2.2-rc.1
+
+Версия 0.1.36 объявляет поддержку DSH `0.2.2-rc.1` и не требует версионного exemption:
+
+- `engines.dsh` и `dsh.compatibility.dsh` — `0.2.1-rc.2 || 0.2.1-rc.5 || 0.2.2-rc.1`;
+- peer-диапазоны всех `@deepseek-ai/dsh-*` пакетов расширены тем же диапазоном;
+- в `dsh.compatibility.dshReleases` добавлена запись `0.2.2-rc.1: compatible`.
+
+Проверено в живом DSH 0.2.2-rc.1: host-часть регистрирует проекции `peakCost`/`peakCostAlt`, клиентская часть отдаёт бейдж, тултип и баланс (DSH 0.2.2 сохраняет legacy-синхронный `sessionProjections.register`). Включает фикс переподключения потока баланса из 0.1.35 и RU/USD-возможности форка.
+
 ## Что изменено относительно upstream
 
 ### Языки

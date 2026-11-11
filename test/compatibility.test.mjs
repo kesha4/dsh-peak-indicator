@@ -9,9 +9,9 @@ import plugin, { Config, createPeakCostProjection } from '../lib/index.js';
 
 const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url)));
 
-test('Store has an exact declaration only for the verified host, consistent with the official gate', () => {
+test('Store has an exact declaration only for the verified hosts, consistent with the official gate', () => {
   const releases = manifest.dsh.compatibility.dshReleases;
-  assert.deepEqual(releases, { '0.2.1-rc.2': 'compatible', '0.2.1-rc.5': 'compatible' });
+  assert.deepEqual(releases, { '0.2.1-rc.2': 'compatible', '0.2.1-rc.5': 'compatible', '0.2.2-rc.1': 'compatible' });
   assert.equal(manifest.dsh.compatibility.dsh, manifest.engines.dsh);
   for (const [version, status] of Object.entries(releases)) {
     if (status === 'compatible') {
@@ -20,11 +20,11 @@ test('Store has an exact declaration only for the verified host, consistent with
   }
 });
 
-test('verified rc.2 and rc.5 pass the official gate without exemptions; untested hosts are refused', () => {
-  for (const version of ['0.2.1-rc.2', '0.2.1-rc.5']) {
+test('verified rc.2, rc.5 and 0.2.2-rc.1 pass the official gate without exemptions; untested hosts are refused', () => {
+  for (const version of ['0.2.1-rc.2', '0.2.1-rc.5', '0.2.2-rc.1']) {
     assert.equal(evaluatePluginCompatibility(manifest, {}, version), undefined);
   }
-  for (const version of ['0.1.1-rc.2', '0.2.0-rc.2', '0.2.1-alpha.5', '0.2.1-rc.1', '0.2.1-rc.3', '0.2.1-rc.4', '0.2.1-rc.6', '0.2.1', '0.2.2-rc.1']) {
+  for (const version of ['0.1.1-rc.2', '0.2.0-rc.2', '0.2.1-alpha.5', '0.2.1-rc.1', '0.2.1-rc.3', '0.2.1-rc.4', '0.2.1-rc.6', '0.2.1', '0.2.2-rc.2', '0.2.2', '0.2.3-rc.1']) {
     assert.deepEqual(evaluatePluginCompatibility(manifest, {}, version).requirements, { 'engines.dsh': manifest.engines.dsh });
   }
 });
