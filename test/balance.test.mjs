@@ -31,8 +31,12 @@ test('auto-picks the wallet that actually holds money',()=>{
  const usdOnly=summarizeBalance(ready([wallet('12.34','USD'),wallet('0','CNY')]));
  assert.equal(usdOnly.currency,'USD');
  assert.equal(usdOnly.total,'$12.34');
- // Two funded wallets: USD stays the preferred display currency.
+ // Two funded wallets: the larger balance wins, so a leftover cent cannot
+ // hide a fresh CNY top-up; equal amounts keep USD as the tie-breaker.
  assert.equal(summarizeBalance(ready([wallet('12.34','USD'),wallet('7','CNY')])).currency,'USD');
+ assert.deepEqual(summarizeBalance(ready([wallet('0.01','USD'),wallet('99.91','CNY')])),{status:'ready',currency:'CNY',total:'¥99.91',recharge:'¥99.91',bonus:'¥0.00'});
+ assert.equal(summarizeBalance(ready([wallet('5','USD'),wallet('5','CNY')])).currency,'USD');
+ assert.equal(summarizeBalance(ready([wallet('0.01','USD'),wallet('0','CNY')],[wallet('100','CNY')])).currency,'CNY');
  // A funded bonus wallet is enough to pick its currency.
  assert.equal(summarizeBalance(ready([wallet('0','USD')],[wallet('2.34','CNY')])).currency,'CNY');
  // Both zero: keep a present currency so a real 0.00 is still shown.
