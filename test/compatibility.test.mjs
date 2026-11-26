@@ -9,9 +9,9 @@ import plugin, { Config, createPeakCostProjection } from '../lib/index.js';
 
 const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url)));
 
-test('Store has an exact declaration only for the verified hosts, consistent with the official gate', () => {
+test('Store records the verified releases and keeps an open 0.2.x compatibility range', () => {
   const releases = manifest.dsh.compatibility.dshReleases;
-  assert.deepEqual(releases, { '0.2.1-rc.2': 'compatible', '0.2.1-rc.5': 'compatible', '0.2.2-rc.1': 'compatible' });
+  assert.deepEqual(releases, { '0.2.1-rc.2': 'compatible', '0.2.1-rc.5': 'compatible', '0.2.2-rc.1': 'compatible', '0.2.2-rc.5': 'compatible' });
   assert.equal(manifest.dsh.compatibility.dsh, manifest.engines.dsh);
   for (const [version, status] of Object.entries(releases)) {
     if (status === 'compatible') {
@@ -20,12 +20,12 @@ test('Store has an exact declaration only for the verified hosts, consistent wit
   }
 });
 
-test('verified rc.2, rc.5 and 0.2.2-rc.1 pass the official gate without exemptions; untested hosts are refused', () => {
-  for (const version of ['0.2.1-rc.2', '0.2.1-rc.5', '0.2.2-rc.1']) {
-    assert.equal(evaluatePluginCompatibility(manifest, {}, version), undefined);
+test('the open 0.2.x range accepts future 0.2 releases and still refuses hosts outside it', () => {
+  for (const version of ['0.2.1-rc.2', '0.2.1-rc.5', '0.2.2-rc.1', '0.2.2-rc.5', '0.2.2-rc.2', '0.2.2', '0.2.3-rc.1', '0.2.9']) {
+    assert.equal(evaluatePluginCompatibility(manifest, {}, version), undefined, version);
   }
-  for (const version of ['0.1.1-rc.2', '0.2.0-rc.2', '0.2.1-alpha.5', '0.2.1-rc.1', '0.2.1-rc.3', '0.2.1-rc.4', '0.2.1-rc.6', '0.2.1', '0.2.2-rc.2', '0.2.2', '0.2.3-rc.1']) {
-    assert.deepEqual(evaluatePluginCompatibility(manifest, {}, version).requirements, { 'engines.dsh': manifest.engines.dsh });
+  for (const version of ['0.1.1-rc.2', '0.2.0-rc.2', '0.2.1-alpha.5', '0.2.1-rc.1', '0.3.0-rc.1', '0.3.0']) {
+    assert.deepEqual(evaluatePluginCompatibility(manifest, {}, version).requirements, { 'engines.dsh': manifest.engines.dsh }, version);
   }
 });
 
